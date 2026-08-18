@@ -1,14 +1,12 @@
 name: Build Debug APK
-
-# 推到 main/master 自动编译；也可在 Actions 页手动 Run workflow
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
@@ -19,42 +17,42 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # 直接 shell 装 Android SDK（绕开不兼容的第三方 action）
       - name: 安装 Android SDK
         run: |
           set -e
           export ANDROID_HOME="$HOME/android-sdk"
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cd "$ANDROID_HOME/cmdline-tools"
-          echo "下载 cmdline-tools..."
-          wget --tries=2 --timeout=120 -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
-          ls -la cmdline-tools.zip
-          file cmdline-tools.zip
+          wget --tries=2 --timeout=180 -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O cmdline-tools.zip
           unzip -q cmdline-tools.zip
           [ -d cmdline-tools ] && mv cmdline-tools latest || true
-          ls -la latest/bin/
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
-      - name: 同意 SDK 协议 + 装平台与构建工具
+      - name: 接受协议 + 装平台与构建工具
         run: |
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      # 改用 Gradle 8.7（AGP 8.5.x 官方推荐版本）
-      - name: 下载 Gradle 8.7
+      - name: 下载 Gradle 8.10.2
         run: |
           cd "$GITHUB_WORKSPACE"
-          wget --tries=2 --timeout=120 -q https://services.gradle.org/distributions/gradle-8.7-bin.zip
-          unzip -q gradle-8.7-bin.zip
-          echo "$(pwd)/gradle-8.7/bin" >> $GITHUB_PATH
+          wget --tries=2 --timeout=180 -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
+          unzip -q gradle-8.10.2-bin.zip
+          echo "$(pwd)/gradle-8.10.2/bin" >> $GITHUB_PATH
 
       - name: 编译 Debug APK
         run: |
           cd "$GITHUB_WORKSPACE"
-          export GRADLE_OPTS="-Xmx2048m -Dfile.encoding=UTF-8"
-          gradle :app:assembleDebug --no-daemon --no-configuration-cache --no-build-cache --stacktrace
+          export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8 -Dorg.gradle.parallel=false"
+          gradle :app:assembleDebug \
+            --no-daemon \
+            --no-configuration-cache \
+            --no-build-cache \
+            --refresh-dependencies \
+            --stacktrace \
+            --info 2>&1 | tail -400
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4

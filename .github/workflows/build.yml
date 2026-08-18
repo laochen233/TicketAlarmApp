@@ -1,0 +1,43 @@
+name: Build Debug APK
+
+# 推到 main/master 自动编译；也可在 Actions 页手动 Run workflow
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 代码
+        uses: actions/checkout@v4
+
+      - name: 安装 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: 安装 Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: 安装 SDK 平台与构建工具并同意协议
+        run: |
+          yes | sdkmanager "platforms;android-34" "build-tools;34.0.0"
+          yes | sdkmanager --licenses
+
+      - name: 下载 Gradle 8.9
+        run: |
+          curl -sL -o gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q gradle.zip
+          echo "$(pwd)/gradle-8.9/bin" >> $GITHUB_PATH
+
+      - name: 编译 Debug APK
+        run: gradle :app:assembleDebug --no-daemon
+
+      - name: 上传 APK 产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ticket-alarm-apk
+          path: app/build/outputs/apk/debug/*.apk

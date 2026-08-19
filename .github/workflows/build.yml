@@ -43,17 +43,17 @@ jobs:
           yes | sdkmanager --licenses > /dev/null 2>&1 || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "platform-tools"
 
-      - name: 准备 Gradle 8.10.2
+      - name: 准备 Gradle 8.9
         run: |
           set -e
-          GRADLE_DIR="/opt/gradle-8.10.2"
+          GRADLE_DIR="/opt/gradle-8.9"
           if [ ! -d "$GRADLE_DIR" ]; then
-            echo "下载 Gradle 8.10.2..."
+            echo "下载 Gradle 8.9..."
             cd /tmp
-            wget --tries=3 --timeout=300 -O gradle-8.10.2-bin.zip \
-              https://services.gradle.org/distributions/gradle-8.10.2-bin.zip
-            ls -lh gradle-8.10.2-bin.zip
-            unzip -q gradle-8.10.2-bin.zip -d /opt/
+            wget --tries=3 --timeout=300 -O gradle-8.9-bin.zip \
+              https://services.gradle.org/distributions/gradle-8.9-bin.zip
+            ls -lh gradle-8.9-bin.zip
+            unzip -q gradle-8.9-bin.zip -d /opt/
           fi
           echo "✅ Gradle 解压完成"
           ls "$GRADLE_DIR/bin/gradle"
@@ -62,9 +62,7 @@ jobs:
       - name: 编译 Debug APK
         run: |
           cd "$GITHUB_WORKSPACE"
-          #关键:清缓存 + 升内存。d8 dex 编译阶段内存敏感,3GB 不够,十几次失败还污染缓存
-          rm -rf ~/.gradle/caches ~/.gradle/caches-jars ~/.gradle/caches-transforms app/build build
-          export GRADLE_OPTS="-Xmx5120m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
+          export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           set -o pipefail
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -500
 

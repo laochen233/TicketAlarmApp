@@ -8,7 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30 steps:
+    timeout-minutes: 30
+    steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
 
@@ -21,9 +22,6 @@ jobs:
       - name: 安装 Android SDK
         run: |
           set -e
-          # 关键:GitHub Actions ubuntu runner 默认设了 ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
-          # 我们要在 $HOME/android-sdk 装一份新的,如果不把 ANDROID_SDK_ROOT 也指向同一处,
-          # Gradle 会报"路径冲突"挂掉(Several environment variables contain different paths to the SDK)
           unset ANDROID_SDK_ROOT
           export ANDROID_HOME="$HOME/android-sdk"
           export ANDROID_SDK_ROOT="$ANDROID_HOME"
@@ -65,17 +63,16 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
-          # set -o pipefail 让 gradle 真挂了 step 会标红(不会像以前那样假成功)
           set -o pipefail
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -500
 
-      - name: 验证 APK 是否生成(用 || true 兜底)
+      - name: 验证 APK 是否生成
         run: |
           echo "=== 查找 APK ==="
           find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null || echo "(本步未找到)"
           echo "=== debug 目录 ==="
           ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "(debug 目录不存在)"
-          echo "✅ 验证步骤结束(APK 存在与否交给下一步 upload-artifact)"
+          echo "✅ 验证步骤结束"
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4

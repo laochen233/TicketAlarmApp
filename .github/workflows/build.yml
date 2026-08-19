@@ -8,8 +8,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
+    timeout-minutes: 30 steps:
       - name: Checkout 代码
         uses: actions/checkout@v4
 
@@ -22,7 +21,12 @@ jobs:
       - name: 安装 Android SDK
         run: |
           set -e
+          # 关键:GitHub Actions ubuntu runner 默认设了 ANDROID_SDK_ROOT=/usr/local/lib/android/sdk
+          # 我们要在 $HOME/android-sdk 装一份新的,如果不把 ANDROID_SDK_ROOT 也指向同一处,
+          # Gradle 会报"路径冲突"挂掉(Several environment variables contain different paths to the SDK)
+          unset ANDROID_SDK_ROOT
           export ANDROID_HOME="$HOME/android-sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
           mkdir -p "$ANDROID_HOME/cmdline-tools"
           cd "$ANDROID_HOME/cmdline-tools"
           if [ ! -d "latest" ]; then
@@ -32,6 +36,7 @@ jobs:
             [ -d cmdline-tools ] && mv cmdline-tools latest || true
           fi
           echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> $GITHUB_ENV
           echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
           echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
 
@@ -60,7 +65,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
-          # 关键:不能直接用 | tail,会吞掉 gradle 退出码
+          # set -o pipefail 让 gradle 真挂了 step 会标红(不会像以前那样假成功)
           set -o pipefail
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -500
 

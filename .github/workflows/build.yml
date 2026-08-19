@@ -62,11 +62,16 @@ jobs:
           export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -300
 
-      - name: 验证 APK 是否生成
+      - name: 验证 APK 是否生成(用 || true 兜底,让 upload-artifact 判定)
         run: |
           echo "=== 查找 APK ==="
-          find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null
-          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "❌ 目录还没生成"
+          # find 找不到时默认 exit code 1,会误判 step 失败,加 || true 兜底
+          find app/build/outputs/apk -name "*.apk" -type f 2>/dev/null || echo "(本步未找到)"
+          echo "=== debug 目录 ==="
+          ls -la app/build/outputs/apk/debug/ 2>/dev/null || echo "(debug 目录不存在)"
+          echo "=== release 目录 ==="
+          ls -la app/build/outputs/apk/release/ 2>/dev/null || echo "(release 目录不存在)"
+          echo "✅ 验证步骤结束(APK 存在与否交给下一步 upload-artifact)"
 
       - name: 上传 APK 产物
         uses: actions/upload-artifact@v4

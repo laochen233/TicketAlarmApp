@@ -62,7 +62,13 @@ jobs:
       - name: 编译 Debug APK
         run: |
           cd "$GITHUB_WORKSPACE"
-          export GRADLE_OPTS="-Xmx3072m -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"
+          # 关键: Kotlin 编译是 fork 出去的独立 worker 进程,默认只分到约 512MB
+          # 编译 material 1.12.0 全家桶容易 OOM 被 worker 调度层 kill → 报 GradleKotlinCompilerWorkAction 崩溃
+          # 必须给 Kotlin daemon 单独内存 + 限制 worker 并发(org.gradle.jvmargs 只管 Gradle 主进程,管不到 Kotlin 子进程)
+          echo "kotlin.daemon.jvmargs=-Xmx2048m -Xms512m" >> gradle.properties
+          echo "org.gradle.workers.max=2" >> gradle.properties
+          export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
+          export KOTLIN_DAEMON_JVMARGS="-Xmx2048m"
           set -o pipefail
           gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -500
 

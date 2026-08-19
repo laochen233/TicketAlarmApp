@@ -1,8 +1,10 @@
 name: Build Debug APK
+
 on:
   push:
     branches: [ main, master ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -53,35 +55,6 @@ jobs:
           echo "✅ Gradle 解压完成"
           ls "$GRADLE_DIR/bin/gradle"
           echo "$GRADLE_DIR/bin" >> $GITHUB_PATH
-
-      - name: 检查并补全 settings.gradle 的 pluginManagement
-        run: |
-          set -e
-          echo "=== 当前 settings.gradle ==="
-          cat settings.gradle
-          echo "==="
-          if ! grep -q "pluginManagement" settings.gradle; then
-            echo "⚠️ 缺 pluginManagement，自动补全"
-            TMP=$(mktemp)
-            cat > "$TMP" <<'EOF'
-pluginManagement {
-    repositories {
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        google()
-        mavenCentral()
-        gradlePluginPortal()
-    }
-}
-EOF
-            cat settings.gradle >> "$TMP"
-            mv "$TMP" settings.gradle
-            echo "✅ 已补全 pluginManagement"
-            echo "=== 新 settings.gradle ==="
-            cat settings.gradle
-          else
-            echo "✅ 已有 pluginManagement，跳过"
-          fi
 
       - name: 编译 Debug APK
         run: |

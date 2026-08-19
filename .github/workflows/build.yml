@@ -62,15 +62,14 @@ jobs:
       - name: 编译 Debug APK
         run: |
           cd "$GITHUB_WORKSPACE"
-          # 关键: Kotlin 编译是 fork 出去的独立 worker 进程,默认只分到约 512MB
-          # 编译 material 1.12.0 全家桶容易 OOM 被 worker 调度层 kill → 报 GradleKotlinCompilerWorkAction 崩溃
-          # 必须给 Kotlin daemon 单独内存 + 限制 worker 并发(org.gradle.jvmargs 只管 Gradle 主进程,管不到 Kotlin 子进程)
-          echo "kotlin.daemon.jvmargs=-Xmx2048m -Xms512m" >> gradle.properties
-          echo "org.gradle.workers.max=2" >> gradle.properties
-          export GRADLE_OPTS="-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
-          export KOTLIN_DAEMON_JVMARGS="-Xmx2048m"
+          # 之前加 kotlin.daemon.jvmargs 无效: 新版 Kotlin 走 Gradle Worker 模式(GradleCompilerRunnerWithWorkers),
+          # fork 出的编译子进程不读该属性(它只管旧版 Kotlin 独立守护进程)。子进程饿死 → 同 Caused by 崩溃。
+          # 改 in-process: Kotlin 编译器跑在 Gradle 主进程,吃主进程 6GB 大堆,绕开 worker fork 内存限制。
+          # 双收益: 若是 worker 内存限制 → 6GB 主堆直接过; 若是真编译错误 → in-process 会把错误直接抛日志(带行号)。
+          echo "kotlin.compiler.execution.strategy=in-process" >> gradle.properties
+          export GRADLE_OPTS="-Xmx6144m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8"
           set -o pipefail
-          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -500
+          gradle :app:assembleDebug --no-daemon --stacktrace 2>&1 | tail -600
 
       - name: 验证 APK 是否生成
         run: |

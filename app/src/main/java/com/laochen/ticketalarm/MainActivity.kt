@@ -51,7 +51,7 @@ class MainActivity : AppCompatActivity() {
 
         // 恢复已设置信息
         if (Prefs.isSet(this)) {
-            val cal = Calendar.getInstance().apply { timeInMillis = Prefs.triggerAt(this) }
+            val cal = Calendar.getInstance().apply { timeInMillis = Prefs.triggerAt(this@MainActivity) }
             pickYear = cal.get(Calendar.YEAR)
             pickMonth = cal.get(Calendar.MONTH)
             pickDay = cal.get(Calendar.DAY_OF_MONTH)
